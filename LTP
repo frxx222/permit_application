@@ -1,0 +1,544 @@
+import React, { useState, useEffect } from 'react';
+import { 
+    Paper, Table, TableBody, TableCell, TableContainer, 
+    TableHead, TableRow, Box, Dialog, DialogTitle, 
+    DialogContent, TextField, DialogActions, TablePagination 
+} from '@mui/material';
+import { Button, useTheme, Grid, IconButton } from '@mui/material';
+import { postPermit, getPermit, updatePermitData, deletePermitData } from '../../states/api.js';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import CreateIcon from '@mui/icons-material/Create';
+
+const Permit = () => {
+    const theme = useTheme();
+    const [data, setData] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(20);
+
+    // State variables for form inputs
+    const [ltpNo, setLtpNo] = useState('');
+    const [shipperName, setShipperName] = useState('');
+    const [shipperAddress, setShipperAddress] = useState('');
+    const [contactNo, setContactNo] = useState('');
+    const [consigneeName, setConsigneeName] = useState('');
+    const [consigneeAddress, setConsigneeAddress] = useState('');
+    const [consigneeContactNo, setConsigneeContactNo] = useState('');
+    const [placeOfOrigin, setPlaceOfOrigin] = useState('');
+    const [portOfDestination, setPortOfDestination] = useState('');
+    const [transportMeans, setTransportMeans] = useState('');
+    const [dateOfDeparture, setDateOfDeparture] = useState('');
+    const [transportId, setTransportId] = useState('');
+    const [commodity, setCommodity] = useState('');
+    const [description, setDescription] = useState('');
+    const [quantity, setQuantity] = useState('');
+    const [marketValue, setMarketValue] = useState('');
+    const [remarks, setRemarks] = useState('');
+    const [or, setOr] = useState('');
+    const [amount, setAmount] = useState('');
+    const [open, setOpen] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [permitId, setPermitId] = useState(null);
+
+
+    // New state for filtering
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]); // Daily filter
+    const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // Monthly filter
+    const [filterMode, setFilterMode] = useState('monthly'); // Toggle between daily or monthly filter
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const permitData = await getPermit();
+                setData(permitData);
+            } catch (error) {
+                console.error('Failed to fetch permit data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    // Shortened column names
+    const columns = [
+        { id: 'ltpNo', name: 'LTP No' },
+        { id: 'shipperName', name: 'Shipper Name' },
+        { id: 'shipperAddress', name: 'Shipper Address' },
+        { id: 'consigneeName', name: 'Consignee Name' },
+        { id: 'consigneeAddress', name: 'Consignee Address' },
+        { id: 'placeOfOrigin', name: 'Place of Origin' },
+        { id: 'portOfDestination', name: 'Port of Destination' },
+        { id: 'transportMeans', name: 'Transport Means' },
+        { id: 'dateOfDeparture', name: 'Date of Departure' },
+        { id: 'commodity', name: 'Commodity' },
+        { id: 'quantity', name: 'Quantity' },
+        { id: 'marketValue', name: 'Market Value' },
+        { id: 'or', name: 'OR' }, // Add OR
+        { id: 'amount', name: 'Amount' }, // Add Amount
+        { id: 'actions', name: 'Actions' },
+    ];
+
+    const handleOpen = () => {
+        setOpen(true);
+    };
+
+    const handleClose = () => {
+        setOpen(false);
+        setEditing(false);
+        resetForm();
+    };
+
+    const resetForm = () => {
+        setLtpNo('');
+        setShipperName('');
+        setShipperAddress('');
+        setContactNo('');
+        setConsigneeName('');
+        setConsigneeAddress('');
+        setConsigneeContactNo('');
+        setPlaceOfOrigin('');
+        setPortOfDestination('');
+        setTransportMeans('');
+        setDateOfDeparture('');
+        setTransportId('');
+        setCommodity('');
+        setDescription('');
+        setQuantity('');
+        setMarketValue('');
+        setRemarks('');
+        setOr('');
+        setAmount(''); 
+        setPermitId(null);
+    };
+    
+    
+    const handleSubmit = async (e) => {
+        e.preventDefault();  
+    
+       
+        const permitObj = {
+            ltpNo,
+            shipperName,
+            shipperAddress,
+            contactNo,
+            consigneeName,
+            consigneeAddress,
+            consigneeContactNo,
+            placeOfOrigin,
+            portOfDestination,
+            transportMeans,
+            dateOfDeparture: new Date(dateOfDeparture),
+            transportId,
+            commodity,
+            description,
+            quantity: Number(quantity), 
+            marketValue: Number(marketValue), 
+            remarks,
+            or: Number(or), 
+            amount: Number(amount), 
+        };
+    
+        // Validatation
+        if (!permitObj.ltpNo || !permitObj.shipperName || !permitObj.shipperAddress || !permitObj.contactNo || !permitObj.consigneeName || !permitObj.consigneeAddress || !permitObj.consigneeContactNo 
+            || !permitObj.placeOfOrigin || !permitObj.portOfDestination || !permitObj.transportMeans || !permitObj.dateOfDeparture 
+            || !permitObj.transportId || !permitObj.commodity || !permitObj.description  || !permitObj.quantity  || !permitObj.marketValue 
+            || !permitObj.remarks  || !permitObj.or || !permitObj.amount 
+        ) {
+            alert("Please fill in all required fields");
+            return;  
+        }
+    
+        // If validation passes, proceed with the submission
+        try {
+            if (editing) {
+                await updatePermitData(permitId, permitObj);  
+            } else {
+                await postPermit(permitObj);  // Create new permit
+            }
+    
+            const updatedData = await getPermit();
+            setData(updatedData);
+            handleClose();
+        } catch (error) {
+            console.error('Failed to submit permit:', error);
+        }
+    };
+    
+
+    const handleApprove = async (id) => {
+        try {
+            await updatePermitData(id, { status: 'approved' });
+            const updatedData = await getPermit();
+            setData(updatedData.filter(item => item.status !== 'approved' && item.status !== 'rejected'));
+        } catch (error) {
+            console.error('Failed to approve permit:', error);
+        }
+    };
+
+    const handleReject = async (id) => {
+        try {
+            await updatePermitData(id, { status: 'rejected' });
+            const updatedData = await getPermit();
+            setData(updatedData.filter(item => item.status !== 'approved' && item.status !== 'rejected'));
+        } catch (error) {
+            console.error('Failed to reject permit:', error);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await deletePermitData(id);
+            const updatedData = await getPermit();
+            setData(updatedData);
+        } catch (error) {
+            console.error('Failed to delete permit:', error);
+        }
+    };
+
+    const filterByDate = (data) => {
+        if (filterMode === 'daily') {
+            return data.filter(item => {
+                const itemDate = new Date(item.dateOfDeparture).toISOString().split("T")[0];
+                return itemDate === selectedDate;
+            });
+        } else if (filterMode === 'monthly') {
+            return data.filter(item => {
+                const itemMonth = new Date(item.dateOfDeparture).toISOString().substring(0, 7);
+                return itemMonth === selectedMonth;
+            });
+        }
+        return data;
+    };
+    
+
+
+    const handleRowClick = (row) => {
+        setPermitId(row._id);
+        setLtpNo(row.ltpNo || '');
+        setShipperName(row.shipperName || '');
+        setShipperAddress(row.shipperAddress || '');
+        setContactNo(row.contactNo || '');
+        setConsigneeName(row.consigneeName || '');
+        setConsigneeAddress(row.consigneeAddress || '');
+        setConsigneeContactNo(row.consigneeContactNo || '');
+        setPlaceOfOrigin(row.placeOfOrigin || '');
+        setPortOfDestination(row.portOfDestination || '');
+        setTransportMeans(row.transportMeans || '');
+        setDateOfDeparture(row.dateOfDeparture || '');
+        setTransportId(row.transportId || '');
+        setCommodity(row.commodity || '');
+        setDescription(row.description || '');
+        setQuantity(row.quantity || '');
+        setMarketValue(row.marketValue || '');
+        setRemarks(row.remarks || '');
+        setOr(row.or || ''); 
+        setAmount(row.amount || ''); 
+        setEditing(true);
+        handleOpen();
+    };
+    
+    
+
+    const paginatedData = filterByDate(data)
+        .filter(item => item.status !== 'approved' && item.status !== 'rejected')
+        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);   
+
+    return (
+        <>
+            <style>
+                {`
+                    @media print {
+                        .no-print {
+                            display: none !important;
+                        }
+                    }
+                `}
+            </style>
+        <Box m="3rem 2rem" width="76vw">
+            <Box sx={{ margin: '1%' }}>
+                <div style={{ margin: '1%', marginBottom: '2%' }}>
+                    <Button 
+                        onClick={handleOpen} 
+                        variant="contained" 
+                        sx={{ backgroundColor: theme.palette.secondary[200], color: 'white' }}
+                        startIcon={<CreateIcon />}
+                    >
+                        Add New
+                    </Button>
+                </div>
+                {/* Filter options */}
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <TextField
+                        label="Filter by Date"
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        disabled={filterMode !== 'daily'}
+                    />
+                    <TextField
+                        label="Filter by Month"
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        disabled={filterMode !== 'monthly'}
+                    />
+                    <Button
+                        sx={{ backgroundColor: theme.palette.secondary[200] }}
+                        variant="outlined"
+                        onClick={() => setFilterMode(filterMode === 'daily' ? 'monthly' : 'daily')}
+                    >
+                        {filterMode === 'daily' ? 'Switch to Monthly' : 'Switch to Daily'}
+                    </Button>
+                </Box>
+                <TableContainer component={Paper} style={{ flexGrow: 1, maxHeight: '60vh', overflowY: 'auto' }}>
+                    <Table stickyHeader>
+                        <TableHead>
+                            <TableRow >
+                                {columns.map((column) => (
+                                    <TableCell key={column.id} align="left" sx={{ backgroundColor: theme.palette.secondary[200], color: 'white' }}>
+                                        {column.name}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        </TableHead>
+                        <TableBody sx={{ backgroundColor: theme.palette.secondary[900], color: theme.palette.secondary[900] }}>
+                            {!isLoading && paginatedData.length > 0 && paginatedData.map((row) => (
+                                <TableRow key={row._id} onClick={() => handleRowClick(row)}>
+                                    {columns.map((column) => (
+                                        <TableCell key={column.id} align="left">
+                                            {column.id !== 'actions' ? (column.id === 'date' ? new Date(row[column.id]).toLocaleDateString('en-GB') : row[column.id]) : (
+                                                <Box display="flex" flexDirection="row" alignItems="center">
+                                                    <IconButton onClick={() => handleApprove(row._id)} style={{ margin: '0 5px' }}>
+                                                        <CheckCircleIcon color="success" />
+                                                    </IconButton>
+                                                    <IconButton onClick={() => handleReject(row._id)} style={{ margin: '0 5px' }}>
+                                                        <CancelIcon color="error" />
+                                                    </IconButton>
+                                                    <IconButton onClick={() => handleDelete(row._id)} style={{ margin: '0 5px' }}>
+                                                        <DeleteIcon color="warning" />
+                                                    </IconButton>
+                                                </Box>
+                                            )}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    component="div"
+                    count={data.length}
+                    page={page}
+                    onPageChange={(event, newPage) => setPage(newPage)}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={(event) => {
+                        setRowsPerPage(parseInt(event.target.value, 10));
+                        setPage(0);
+                        }}
+                    rowsPerPageOptions={[5, 10, 20]}
+                />
+            </Box>
+
+            <Dialog open={open} onClose={handleClose}>
+                <DialogTitle>{editing ? 'Edit Permit' : 'Add Permit'}</DialogTitle>
+                <DialogContent>
+                <form onSubmit={handleSubmit}>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="LTP No"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={ltpNo}
+                        onChange={(e) => setLtpNo(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Shipper Name"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={shipperName}
+                        onChange={(e) => setShipperName(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Shipper Address"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={shipperAddress}
+                        onChange={(e) => setShipperAddress(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Contact No"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={contactNo}
+                        onChange={(e) => setContactNo(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Consignee Name"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={consigneeName}
+                        onChange={(e) => setConsigneeName(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Consignee Address"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={consigneeAddress}
+                        onChange={(e) => setConsigneeAddress(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Consignee Contact No"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={consigneeContactNo}
+                        onChange={(e) => setConsigneeContactNo(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Place of Origin"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={placeOfOrigin}
+                        onChange={(e) => setPlaceOfOrigin(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Port of Destination"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={portOfDestination}
+                        onChange={(e) => setPortOfDestination(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Transport Means"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={transportMeans}
+                        onChange={(e) => setTransportMeans(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Date of Departure"
+                        type="date"
+                        fullWidth
+                        variant="outlined"
+                        value={dateOfDeparture}
+                        onChange={(e) => setDateOfDeparture(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Transport ID"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={transportId}
+                        onChange={(e) => setTransportId(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Commodity"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={commodity}
+                        onChange={(e) => setCommodity(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Description"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Quantity"
+                        type="number"
+                        fullWidth
+                        variant="outlined"
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Market Value"
+                        type="number"
+                        fullWidth
+                        variant="outlined"
+                        value={marketValue}
+                        onChange={(e) => setMarketValue(e.target.value)}
+                    />
+                    <TextField
+                        margin="dense"
+                        label="Remarks"
+                        type="text"
+                        fullWidth
+                        variant="outlined"
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                    />
+                    <TextField
+                    margin="dense"
+                    label="OR"
+                    type="number"
+                    fullWidth
+                    variant="outlined"
+                    value={or}
+                    onChange={(e) => setOr(e.target.value)}
+                />
+                <TextField
+                    margin="dense"
+                    label="Amount"
+                    type="number"
+                    fullWidth
+                    variant="outlined"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                />
+                </form>
+            </DialogContent>
+
+                <DialogActions sx={{ backgroundColor: 'black' }}>
+                    <Button onClick={handleClose} className="no-print" color="primary">Cancel</Button>
+                    <Button className="no-print" type="submit" variant="contained" sx={{ backgroundColor: theme.palette.secondary[200], color: 'white' }} onClick={handleSubmit}>
+                        {editing ? 'Update' : 'Submit'}
+                    </Button>
+                    <Button className="no-print" onClick={() => window.print()} variant="outlined" color="primary">
+                        Print
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
+        </>
+    );
+};
+
+export default Permit;
